@@ -1,0 +1,21 @@
+name: Daily question
+on:
+  schedule:
+    - cron: "10 8 * * *"   # about 12:10 AM Pacific (winter)
+    - cron: "10 9 * * *"   # backup run an hour later
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 build.py
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Daily question"
+          git push
