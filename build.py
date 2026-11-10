@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Builds index.html: one NCVEC pool question per day, no JavaScript needed."""
+import json, html, random, datetime
+from zoneinfo import ZoneInfo
+
+CLASSES = ["Technician", "General", "Extra"]
+pools = json.load(open("pools.json", encoding="utf-8"))
+
+today = datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date()
+day = (today - datetime.date(1970, 1, 1)).days
+cls = CLASSES[day % 3]
+order = list(range(len(pools[cls])))
+random.Random(12345 + CLASSES.index(cls)).shuffle(order)
+qid, question, answers, correct = pools[cls][order[(day // 3) % len(order)]]
+L = "ABCD"
+
+opts = ""
+for i, a in enumerate(answers):
+    c = " c" if i == correct else ""
+    k = " correct" if i == correct else ""
+    opts += (f'<input type="radio" name="o" id="o{i}" class="r{c}">'
+             f'<label for="o{i}" class="opt{k}"><b>{L[i]}.</b> {html.escape(a)}</label>')
+
+page = f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ham Question of the Day</title>
+<style>
+body{{margin:0;padding:10px;font-family:Verdana,Arial,sans-serif;font-size:14px;color:#000;background:#fff}}
+.box{{border:1px solid #888;border-radius:6px;padding:10px 12px;max-width:560px}}
+h3{{margin:0 0 6px;font-size:15px}}
+.tag{{font-size:12px;color:#555;margin-bottom:8px}}
+.q{{font-weight:bold;margin:6px 0 8px}}
+#chk{{display:none}}
+input.r{{position:absolute;opacity:0;pointer-events:none}}
+label.opt{{display:block;padding:4px 6px 4px 28px;margin:2px 0;border-radius:4px;cursor:pointer;position:relative}}
+label.opt:before{{content:"";position:absolute;left:6px;top:7px;width:10px;height:10px;border:2px solid #555;border-radius:50%}}
+input.r:checked + label.opt:before{{background:#333}}
+label.btn{{display:inline-block;margin-top:8px;padding:5px 14px;border:1px solid #767676;border-radius:4px;background:#efefef;cursor:pointer}}
+.ok,.no,.ans{{display:none;margin-top:8px;font-weight:bold}}
+#chk:checked ~ .opts input.r:checked + label.opt:not(.correct){{background:#f5c6c6}}
+#chk:checked ~ .opts label.correct{{background:#c8f0c8}}
+#chk:checked ~ .opts input.r.c:checked ~ .ok{{display:block}}
+#chk:checked ~ .opts input.r:not(.c):checked ~ .no{{display:block}}
+#chk:checked ~ .ans{{display:block}}
+.src{{margin-top:10px;font-size:11px;color:#666}}
+</style></head><body>
+<div class="box">
+<h3>Ham Question of the Day</h3>
+<div class="tag">{cls} class &mdash; question {qid} &mdash; {today.strftime('%b %d, %Y').replace(' 0',' ')}</div>
+<div class="q">{html.escape(question)}</div>
+<input type="checkbox" id="chk">
+<div class="opts">{opts}<span class="ok">&#10003; Correct!</span><span class="no">&#10007; Not quite.</span></div>
+<label for="chk" class="btn">Check answer</label>
+<div class="ans">Correct answer: {L[correct]}.</div>
+<div class="src">Questions from the NCVEC amateur radio question pools (Technician 2026&ndash;2030, General 2023&ndash;2027, Extra 2024&ndash;2028). New question daily.</div>
+</div></body></html>"""
+open("index.html", "w", encoding="utf-8").write(page)
+print("Built", cls, qid, today)
